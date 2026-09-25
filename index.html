@@ -1297,8 +1297,81 @@
 
         // Extract Strings
         const strings = ForensicsEngine.extractStrings(buffer);
+        window._extractedStrings = strings;
         document.getElementById('strings-output').value = strings.join('\n');
         showToast('Berkas berhasil dianalisis secara lokal!', 'success');
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function filterStrings(query) {
+      if (!window._extractedStrings) return;
+      const q = query.toLowerCase();
+      const filtered = window._extractedStrings.filter(s => s.toLowerCase().includes(q));
+      document.getElementById('strings-output').value = filtered.join('\n');
+    }
+
+    function handleRevBinary(file) {
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const bytes = new Uint8Array(e.target.result);
+        const reportDiv = document.getElementById('rev-binary-report');
+        reportDiv.style.display = 'block';
+
+        let arch = 'Unknown / Non-standard Executable';
+        let format = 'Raw Data';
+        let bits = 'Unknown';
+        let endian = 'Unknown';
+        let entryPoint = 'N/A';
+        let mitigations = [];
+
+        // Check ELF (7F 45 4C 46)
+        if (bytes[0] === 0x7F && bytes[1] === 0x45 && bytes[2] === 0x4C && bytes[3] === 0x46) {
+          format = 'Linux ELF (Executable and Linkable Format)';
+          bits = bytes[4] === 1 ? '32-bit' : bytes[4] === 2 ? '64-bit' : 'Unknown';
+          endian = bytes[5] === 1 ? 'Little Endian (LSB)' : 'Big Endian (MSB)';
+          const is64 = bytes[4] === 2;
+          
+          // Entry point offset in ELF header: 0x18 for 32-bit (4 bytes), 0x18 for 64-bit (8 bytes)
+          if (bytes.length >= 0x20) {
+            let epVal = 0n;
+            if (is64 && bytes.length >= 0x28) {
+              for (let i = 7; i >= 0; i--) {
+                epVal = (epVal << 8n) | BigInt(bytes[0x18 + i]);
+              }
+              entryPoint = '0x' + epVal.toString(16);
+            } else {
+              for (let i = 3; i >= 0; i--) {
+                epVal = (epVal << 8n) | BigInt(bytes[0x18 + i]);
+              }
+              entryPoint = '0x' + epVal.toString(16);
+            }
+          }
+
+          // Heuristic mitigation scan
+          const allStr = ForensicsEngine.extractStrings(bytes).join(' ');
+          if (allStr.includes('__stack_chk_fail')) mitigations.push('<span style="color:#22c55e;">✔ Stack Canary Detected (__stack_chk_fail present)</span>');
+          else mitigations.push('<span style="color:#ef4444;">✘ No Stack Canary Symbol Detected</span>');
+
+          if (allStr.includes('GLIBC')) mitigations.push('<span style="color:#38bdf8;">ℹ Linked with GNU C Library (glibc)</span>');
+
+          arch = `${format} ${bits} - ${endian}`;
+        } else if (bytes[0] === 0x4D && bytes[1] === 0x5A) {
+          // Check PE (MZ header)
+          format = 'Windows PE Executable (Portable Executable)';
+          arch = 'Windows PE / DOS Executable';
+          mitigations.push('<span style="color:#38bdf8;">ℹ Windows Executable - Check DEP/ASLR with dumpbin/pestudio</span>');
+        }
+
+        reportDiv.innerHTML = `
+          <div><b style="color:#38bdf8;">Binary Name:</b> ${file.name} (${file.size.toLocaleString()} bytes)</div>
+          <div><b style="color:#22c55e;">Target Architecture:</b> ${arch}</div>
+          <div><b style="color:#f59e0b;">Entry Point (e_entry):</b> ${entryPoint}</div>
+          <div style="margin-top:8px;"><b style="color:#cbd5e1;">Static Security Mitigation Indicators:</b></div>
+          <div style="margin-left:10px;line-height:1.6;">${mitigations.join('<br>') || 'N/A'}</div>
+        `;
+        showToast('Header biner berhasil di-triage!', 'success');
       };
       reader.readAsArrayBuffer(file);
     }
