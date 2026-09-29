@@ -47,9 +47,12 @@ Workstation taktis dan toolkit analisis keamanan siber mandiri (*all-in-one*) un
 
 8. **Miscellaneous**:
    - Multi-radix converter (Decimal, Hexadecimal, Binary, Octal).
-   - Bitwise operations calculator (AND, OR, XOR, SHL, SHR).
-   - Tool Chaining Pipeline (Base64 -> Hex -> XOR -> Reverse).
-   - Global Auto-Triage modal untuk analisis berkas & string kilat.
+   - Bitwise operations calculator (AND, OR, XOR, NOT, SHL, SHR) berbasis BigInt.
+   - Stegsolve-Style Canvas Bit-Plane visualizer untuk kanal RGBA (Bit 0-7).
+   - Real De Bruijn sequence cyclic pattern generator & crash offset finder (pwntools compatible).
+   - Linux ELF & Windows PE binary header inspection (Entry point, machine arch, section tables).
+   - Tool Chaining Pipeline reaktif (Base64 -> Hex -> XOR -> Reverse).
+   - Global Auto-Triage modal untuk deteksi berkas, hash, dan string otomatis.
    - CTF Challenge Workspace dengan penyimpanan lokal autosave.
 
 ## 🚀 Cara Menjalankan
